@@ -11,6 +11,8 @@
 | Android (App) | NotificationListener | 実装不備により動作しません |
 | Android (Shell) | dumpsys | 実装不備により動作しません |
 
+ただし、Windows / Linuxでしか動作しません。
+
 ## 起動方法
 
 ### Windows
@@ -42,6 +44,27 @@ adb shell su -c 'sh /sdcard/media-api/install.sh'
 # 起動
 adb shell su -c '/data/local/tmp/media-api/start.sh'
 ```
+
+## Discord Rich Presence 連携
+
+再生中のメディアをDiscordのアクティビティに表示できます。
+
+### 準備
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) でアプリケーションを作成し、**Client ID** を取得してください。
+2. PCでDiscordアプリを起動しておきます。
+
+### 実行
+
+```bash
+# 仮想環境を使用する場合 (推奨)
+./venv/bin/python discord_presence.py --client-id <YOUR_CLIENT_ID>
+
+# または
+python discord_presence.py --client-id <YOUR_CLIENT_ID>
+```
+
+停止するには `Ctrl+C` を押してください。
 
 ## API
 

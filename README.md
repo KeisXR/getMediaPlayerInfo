@@ -8,8 +8,8 @@
 |----------|---------|------|
 | Windows | SMTC | Windows 10以降 |
 | Linux | MPRIS (D-Bus) | D-Bus対応プレイヤー |
-| Android (App) | NotificationListener | **Root不要** ⭐ |
-| Android (Shell) | dumpsys | Root必要 (KernelSU/Magisk) |
+| Android (App) | NotificationListener | 実装不備により動作しません |
+| Android (Shell) | dumpsys | 実装不備により動作しません |
 
 ## 起動方法
 
@@ -48,3 +48,4 @@ adb shell su -c '/data/local/tmp/media-api/start.sh'
 - `GET /` - ステータス確認
 - `GET /now-playing` - 現在の再生情報取得
 - `WebSocket /ws` - リアルタイム更新（Python版のみ）
+

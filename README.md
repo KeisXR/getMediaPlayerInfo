@@ -7,7 +7,7 @@
 | Platform | 取得方法 | 備考 |
 |----------|---------|------|
 | Windows | SMTC | Windows 10以降 |
-| Linux | MPRIS (D-Bus) | D-Bus対応プレイヤー |
+| Linux | MPRIS (D-Bus) / WayDroid (Shell) | D-Bus対応プレイヤー / WayDroidコンテナ内のアプリ |
 | Android (App) | NotificationListener | 実装不備により動作しません |
 | Android (Shell) | dumpsys | 実装不備により動作しません |
 
@@ -25,6 +25,18 @@
 chmod +x run.sh
 ./run.sh
 ```
+
+#### WayDroid 設定 (オプション)
+
+WayDroid内のメディア情報を取得するには、以下の設定を行ってください：
+
+1. `waydroid shell` コマンドをパスワードなしで実行できるように設定
+   ```bash
+   echo 'username ALL=(ALL) NOPASSWD: /usr/bin/waydroid shell *' | sudo tee /etc/sudoers.d/waydroid
+   sudo chmod 440 /etc/sudoers.d/waydroid
+   ```
+   ※ `username` はあなたのユーザー名に置き換えてください。
+
 
 ### Android (アプリ版) 
 1. [Releases](../../releases) から APK をダウンロード

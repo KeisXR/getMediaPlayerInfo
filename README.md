@@ -24,7 +24,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-### Android (アプリ版) ⭐ Root不要
+### Android (アプリ版) 
 1. [Releases](../../releases) から APK をダウンロード
 2. インストールして起動
 3. 「Grant Permission」→ 通知アクセス権限を許可
@@ -48,4 +48,5 @@ adb shell su -c '/data/local/tmp/media-api/start.sh'
 - `GET /` - ステータス確認
 - `GET /now-playing` - 現在の再生情報取得
 - `WebSocket /ws` - リアルタイム更新（Python版のみ）
+
 

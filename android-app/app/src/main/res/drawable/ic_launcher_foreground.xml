@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Play triangle icon representing media -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,32 L38,76 L76,54 Z" />
+    
+    <!-- Network/API indicator (small dots) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M74,70 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M82,62 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M86,52 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
+</vector>

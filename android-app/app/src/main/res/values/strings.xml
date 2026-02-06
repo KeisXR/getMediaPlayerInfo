@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Media Player API</string>
+    <string name="notification_channel_name">Media API Server</string>
+    <string name="notification_channel_description">Shows when the HTTP server is running</string>
+    <string name="server_running">Server running on port %d</string>
+    <string name="server_stopped">Server stopped</string>
+    <string name="notification_access_required">Notification access required</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="start_server">Start Server</string>
+    <string name="stop_server">Stop Server</string>
+</resources>

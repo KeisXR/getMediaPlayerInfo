@@ -170,6 +170,30 @@ class LinuxMediaProvider(MediaProvider):
             # Get playback status
             status = self._convert_playback_status(str(active_properties.get("PlaybackStatus", "")))
             
+            # Get position and duration (MPRIS uses microseconds)
+            position_ms = None
+            duration_ms = None
+            
+            # Duration from metadata (mpris:length is in microseconds)
+            length_us = metadata.get("mpris:length")
+            if length_us is not None:
+                try:
+                    duration_ms = int(length_us) // 1000
+                    if duration_ms <= 0:
+                        duration_ms = None
+                except (ValueError, TypeError):
+                    pass
+            
+            # Position from player properties (in microseconds)
+            position_us = active_properties.get("Position")
+            if position_us is not None:
+                try:
+                    position_ms = int(position_us) // 1000
+                    if position_ms < 0:
+                        position_ms = None
+                except (ValueError, TypeError):
+                    pass
+            
             # thumbnail extraction removed
             
             return MediaInfo(
@@ -177,7 +201,9 @@ class LinuxMediaProvider(MediaProvider):
                 title=title,
                 artist=artist,
                 album=album,
-                status=status
+                status=status,
+                position_ms=position_ms,
+                duration_ms=duration_ms,
             )
             
         except Exception as e:

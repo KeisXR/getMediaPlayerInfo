@@ -2,11 +2,13 @@
 Discord Rich Presence for Media Player API
 
 Displays currently playing media information in Discord's activity status.
+Includes elapsed/remaining time display (seek bar) when position/duration are available.
 """
 import asyncio
 import argparse
 import signal
 import sys
+import time
 from typing import Optional
 
 try:
@@ -80,6 +82,50 @@ class DiscordMediaPresence:
         app_lower = source_app.lower()
         return self.APP_ICONS.get(app_lower, "music")
     
+    def _build_state_text(self, media: MediaInfo) -> Optional[str]:
+        """Build state text with artist/album and time info."""
+        parts = []
+        if media.artist:
+            parts.append(media.artist)
+        if media.album:
+            parts.append(media.album)
+        
+        state = " - ".join(parts) if parts else None
+        
+        # Append time info to state if available
+        if media.position_ms is not None and media.duration_ms is not None:
+            time_str = f"{MediaInfo.format_time(media.position_ms)} / {MediaInfo.format_time(media.duration_ms)}"
+            if state:
+                state = f"{state}  [{time_str}]"
+            else:
+                state = time_str
+        
+        return state
+    
+    def _calculate_timestamps(self, media: MediaInfo) -> tuple[Optional[int], Optional[int]]:
+        """
+        Calculate Discord timestamps for elapsed/remaining time display.
+        
+        Returns:
+            tuple: (start_epoch, end_epoch) or (None, None) if not available
+        """
+        if media.status != PlaybackStatus.PLAYING:
+            return None, None
+        
+        if media.position_ms is None or media.duration_ms is None:
+            return None, None
+        
+        if media.duration_ms <= 0:
+            return None, None
+        
+        now = time.time()
+        # Calculate when the song "started" based on current position
+        start_epoch = int(now - (media.position_ms / 1000))
+        # Calculate when the song will "end"
+        end_epoch = int(start_epoch + (media.duration_ms / 1000))
+        
+        return start_epoch, end_epoch
+    
     async def update_presence(self, media: Optional[MediaInfo]) -> None:
         """Update Discord presence with media info."""
         if not self.rpc:
@@ -93,14 +139,7 @@ class DiscordMediaPresence:
             
             # Build presence data
             details = media.title
-            
-            # State: Artist - Album or just Artist
-            state_parts = []
-            if media.artist:
-                state_parts.append(media.artist)
-            if media.album:
-                state_parts.append(media.album)
-            state = " - ".join(state_parts) if state_parts else None
+            state = self._build_state_text(media)
             
             # Large image: app icon, small image: playback status
             large_image = self._get_large_image_key(media.source_app)
@@ -109,14 +148,25 @@ class DiscordMediaPresence:
             small_image = "playing" if media.status == PlaybackStatus.PLAYING else "paused"
             small_text = self._get_status_text(media.status)
             
-            await self.rpc.update(
-                details=details[:128] if details else None,  # Discord limit
-                state=state[:128] if state else None,        # Discord limit
-                large_image=large_image,
-                large_text=large_text,
-                small_image=small_image,
-                small_text=small_text,
-            )
+            # Calculate timestamps for seek bar
+            start_epoch, end_epoch = self._calculate_timestamps(media)
+            
+            # Build update kwargs
+            kwargs = {
+                "details": details[:128] if details else None,
+                "state": state[:128] if state else None,
+                "large_image": large_image,
+                "large_text": large_text,
+                "small_image": small_image,
+                "small_text": small_text,
+            }
+            
+            # Add timestamps only when playing with valid time info
+            if start_epoch is not None and end_epoch is not None:
+                kwargs["start"] = start_epoch
+                kwargs["end"] = end_epoch
+            
+            await self.rpc.update(**kwargs)
             
         except PipeClosed:
             print("Discord connection lost. Attempting to reconnect...")
@@ -125,7 +175,7 @@ class DiscordMediaPresence:
             print(f"Error updating presence: {e}")
     
     def _media_changed(self, current: Optional[MediaInfo]) -> bool:
-        """Check if media has changed."""
+        """Check if media has changed (ignores position changes for efficiency)."""
         if self._last_media is None and current is None:
             return False
         if self._last_media is None or current is None:
@@ -135,7 +185,8 @@ class DiscordMediaPresence:
             self._last_media.title != current.title or
             self._last_media.artist != current.artist or
             self._last_media.status != current.status or
-            self._last_media.source_app != current.source_app
+            self._last_media.source_app != current.source_app or
+            self._last_media.duration_ms != current.duration_ms
         )
     
     async def run(self) -> None:
@@ -156,18 +207,31 @@ class DiscordMediaPresence:
         print("Watching for media changes... (Ctrl+C to stop)")
         
         try:
+            update_counter = 0
             while self.running:
                 try:
                     media = await self.provider.get_current_media()
                     
-                    if self._media_changed(media):
-                        self._last_media = media
+                    # Update on media change or periodically (every 15s) for time sync
+                    media_changed = self._media_changed(media)
+                    update_counter += 1
+                    periodic_update = (update_counter >= 8)  # ~16 seconds at 2s interval
+                    
+                    if media_changed or periodic_update:
+                        if media_changed:
+                            self._last_media = media
+                        if periodic_update:
+                            update_counter = 0
+                        
                         await self.update_presence(media)
                         
-                        if media:
+                        if media and media_changed:
                             status_icon = "▶" if media.status == PlaybackStatus.PLAYING else "⏸"
-                            print(f"{status_icon} {media.title} - {media.artist} ({media.source_app})")
-                        else:
+                            time_info = ""
+                            if media.position_ms is not None and media.duration_ms is not None:
+                                time_info = f" [{MediaInfo.format_time(media.position_ms)} / {MediaInfo.format_time(media.duration_ms)}]"
+                            print(f"{status_icon} {media.title} - {media.artist} ({media.source_app}){time_info}")
+                        elif not media and media_changed:
                             print("No media playing")
                     
                     await asyncio.sleep(2)  # Poll every 2 seconds

@@ -8,10 +8,8 @@
 |----------|---------|------|
 | Windows | SMTC | Windows 10以降 |
 | Linux | MPRIS (D-Bus) / WayDroid (Shell) | D-Bus対応プレイヤー / WayDroidコンテナ内のアプリ |
-| Android (App) | NotificationListener | 実装不備により動作しません |
+| Android (App) | MediaSession API | v2で再作成 |
 | Android (Shell) | dumpsys | 実装不備により動作しません |
-
-ただし、Windows / Linuxでしか動作しません。
 
 ## 起動方法
 
@@ -45,7 +43,7 @@ WayDroid内のメディア情報を取得するには、以下の設定を行っ
 4. 「Start Server」をタップ
 5. `http://<端末IP>:8765/now-playing` でアクセス
 
-※ GitHub Actionsでビルド: `android-app/` ディレクトリ参照
+※ GitHub Actionsでビルド: `android-app-v2/` ディレクトリ参照
 
 ### Android (Termux + Python)
 ```bash

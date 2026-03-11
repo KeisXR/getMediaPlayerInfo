@@ -4,12 +4,12 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'android-app/**'
+      - 'android-app-v2/**'
       - '.github/workflows/android-build.yml'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'android-app/**'
+      - 'android-app-v2/**'
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: android-app
+        working-directory: android-app-v2
     
     steps:
     - name: Checkout code
@@ -43,7 +43,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: media-player-api-debug
-        path: android-app/app/build/outputs/apk/debug/*.apk
+        path: android-app-v2/app/build/outputs/apk/debug/*.apk
         retention-days: 30
     
     - name: Build Release APK (unsigned)
@@ -53,5 +53,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: media-player-api-release
-        path: android-app/app/build/outputs/apk/release/*.apk
+        path: android-app-v2/app/build/outputs/apk/release/*.apk
         retention-days: 30

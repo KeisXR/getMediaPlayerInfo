@@ -124,12 +124,36 @@ def parse_dumpsys_media_session(output: str) -> Optional[MediaInfo]:
     if not title and not artist:
         return None
     
+    # Parse position from PlaybackState (Android uses milliseconds)
+    position_ms = None
+    pos_match = re.search(r'state=PlaybackState\s*\{[^}]*position=(\d+)', session_content)
+    if pos_match:
+        try:
+            position_ms = int(pos_match.group(1))
+            if position_ms < 0:
+                position_ms = None
+        except (ValueError, TypeError):
+            pass
+    
+    # Parse duration from metadata (Android uses milliseconds)  
+    duration_ms = None
+    duration_str = extract_metadata(session_content, "DURATION")
+    if duration_str:
+        try:
+            duration_ms = int(duration_str)
+            if duration_ms <= 0:
+                duration_ms = None
+        except (ValueError, TypeError):
+            pass
+    
     return MediaInfo(
         source_app=f"{app_name} (WayDroid)",
         title=title or "",
         artist=artist or "",
         album=album or "",
-        status=status
+        status=status,
+        position_ms=position_ms,
+        duration_ms=duration_ms,
     )
 
 

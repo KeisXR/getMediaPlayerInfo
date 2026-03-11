@@ -23,6 +23,8 @@ class MediaInfo:
     artist: str = ""
     album: str = ""
     status: PlaybackStatus = PlaybackStatus.UNKNOWN
+    position_ms: Optional[int] = None  # Current playback position in milliseconds
+    duration_ms: Optional[int] = None  # Total duration in milliseconds
     # thumbnail field removed for copyright reasons
     
     def to_dict(self) -> dict:
@@ -33,12 +35,22 @@ class MediaInfo:
             "artist": self.artist,
             "album": self.album,
             "status": self.status.value,
+            "position_ms": self.position_ms,
+            "duration_ms": self.duration_ms,
             "thumbnail": None  # Always return None
         }
     
     def is_playing(self) -> bool:
         """Check if media is currently playing."""
         return self.status == PlaybackStatus.PLAYING
+    
+    @staticmethod
+    def format_time(ms: int) -> str:
+        """Format milliseconds to mm:ss string."""
+        total_seconds = ms // 1000
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        return f"{minutes}:{seconds:02d}"
 
 
 class MediaProvider(ABC):

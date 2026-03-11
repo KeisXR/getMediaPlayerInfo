@@ -122,12 +122,34 @@ class WindowsMediaProvider(MediaProvider):
                 if fallback_info:
                     return fallback_info
             
+            # Get timeline properties for position/duration
+            position_ms = None
+            duration_ms = None
+            try:
+                timeline = session.get_timeline_properties()
+                if timeline:
+                    # position and end_time are datetime.timedelta objects
+                    pos = timeline.position
+                    end = timeline.end_time
+                    if pos is not None:
+                        position_ms = int(pos.total_seconds() * 1000)
+                        if position_ms < 0:
+                            position_ms = None
+                    if end is not None:
+                        duration_ms = int(end.total_seconds() * 1000)
+                        if duration_ms <= 0:
+                            duration_ms = None
+            except Exception:
+                pass
+            
             return MediaInfo(
                 source_app=source_app,
                 title=title,
                 artist=artist,
                 album=album,
-                status=status
+                status=status,
+                position_ms=position_ms,
+                duration_ms=duration_ms,
             )
             
         except Exception as e:

@@ -67,4 +67,27 @@ echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
-./venv/bin/python main.py "$@"
+if [ $# -eq 0 ]; then
+    echo "Select filter mode / 動作モードを選択してください:"
+    echo "  1) all        - All media sources (Default)"
+    echo "  2) no-browser - Exclude browsers (Chromium, Firefox, etc.)"
+    echo "  3) apps-only  - WayDroid and apps only"
+    read -p "Enter number (1-3) [1]: " choice
+    
+    case "$choice" in
+        2)
+            FILTER_ARG="--filter no-browser"
+            ;;
+        3)
+            FILTER_ARG="--filter apps-only"
+            ;;
+        *)
+            FILTER_ARG="--filter all"
+            ;;
+    esac
+    echo "Starting with $FILTER_ARG..."
+    echo ""
+    ./venv/bin/python main.py $FILTER_ARG
+else
+    ./venv/bin/python main.py "$@"
+fi

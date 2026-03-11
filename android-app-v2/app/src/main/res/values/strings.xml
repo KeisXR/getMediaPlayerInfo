@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Media Player API</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="permission_granted">✓ Permission Granted</string>
+    <string name="start_server">Start Server</string>
+    <string name="stop_server">Stop Server</string>
+    <string name="notification_channel_name">Media API Server</string>
+    <string name="notification_channel_description">Shows when Media Player API server is running</string>
+    <string name="status_checking">Checking status…</string>
+    <string name="status_need_permission">Notification access required</string>
+    <string name="status_server_running">Server running</string>
+    <string name="status_server_stopped">Server stopped</string>
+    <string name="hint_grant_permission">Please grant permission to read media notifications</string>
+    <string name="hint_start_server">Tap \'Start Server\' to begin</string>
+    <string name="label_current_media">Now Playing</string>
+    <string name="no_media">No media playing</string>
+</resources>

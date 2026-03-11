@@ -149,6 +149,17 @@
                     android:maxLines="1"
                     android:ellipsize="end" />
 
+                <!-- Playback time -->
+                <TextView
+                    android:id="@+id/mediaTime"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textColor="@color/accent"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    android:fontFamily="monospace" />
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>

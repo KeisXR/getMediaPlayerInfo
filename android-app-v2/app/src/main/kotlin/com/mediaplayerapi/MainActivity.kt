@@ -33,12 +33,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaTitle: TextView
     private lateinit var mediaArtist: TextView
     private lateinit var mediaSource: TextView
+    private lateinit var mediaTime: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private val uiUpdateRunnable = object : Runnable {
         override fun run() {
             updateUI()
-            handler.postDelayed(this, 2000)  // Update every 2 seconds
+            handler.postDelayed(this, 1000)  // Update every 1 second for time display
         }
     }
 
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         mediaTitle = findViewById(R.id.mediaTitle)
         mediaArtist = findViewById(R.id.mediaArtist)
         mediaSource = findViewById(R.id.mediaSource)
+        mediaTime = findViewById(R.id.mediaTime)
 
         // Make status dot circular
         val dotDrawable = GradientDrawable().apply {
@@ -148,6 +150,19 @@ class MainActivity : AppCompatActivity() {
                 else -> "⏹"
             }
             mediaSource.text = "$statusIcon ${formatPackageName(media.sourceApp)}"
+
+            // Show playback time
+            val posMs = media.positionMs
+            val durMs = media.durationMs
+            if (posMs != null && durMs != null && durMs > 0) {
+                mediaTime.visibility = View.VISIBLE
+                mediaTime.text = "${MediaInfo.formatTime(posMs)} / ${MediaInfo.formatTime(durMs)}"
+            } else if (posMs != null) {
+                mediaTime.visibility = View.VISIBLE
+                mediaTime.text = MediaInfo.formatTime(posMs)
+            } else {
+                mediaTime.visibility = View.GONE
+            }
 
         } else {
             nowPlayingCard.visibility = View.GONE

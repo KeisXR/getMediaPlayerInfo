@@ -6,6 +6,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -33,13 +34,47 @@ class MediaSessionMonitor : NotificationListenerService() {
         @Volatile
         private var lastUpdatedMs: Long = 0L
 
+        // For real-time position calculation
+        @Volatile
+        private var lastPositionMs: Long = 0L
+
+        @Volatile
+        private var lastPositionUpdateElapsed: Long = 0L
+
+        @Volatile
+        private var playbackSpeed: Float = 1.0f
+
+        @Volatile
+        private var isCurrentlyPlaying: Boolean = false
+
         @Volatile
         private var instance: MediaSessionMonitor? = null
 
         /**
-         * Get current media info, returning cached data if within TTL.
+         * Get current media info with real-time position calculation.
+         * For playing media, the position is extrapolated based on elapsed time
+         * since the last PlaybackState update.
          */
-        fun getCurrentMedia(): MediaInfo? = currentMedia
+        fun getCurrentMedia(): MediaInfo? {
+            val media = currentMedia ?: return null
+
+            // Calculate real-time position if playing
+            if (isCurrentlyPlaying && lastPositionUpdateElapsed > 0) {
+                val elapsedSinceUpdate = SystemClock.elapsedRealtime() - lastPositionUpdateElapsed
+                val estimatedPosition = lastPositionMs + (elapsedSinceUpdate * playbackSpeed).toLong()
+
+                // Clamp to duration if available
+                val clampedPosition = if (media.durationMs != null && media.durationMs > 0) {
+                    estimatedPosition.coerceIn(0, media.durationMs)
+                } else {
+                    estimatedPosition.coerceAtLeast(0)
+                }
+
+                return media.copy(positionMs = clampedPosition)
+            }
+
+            return media
+        }
 
         /**
          * Get cached media info if cache is still valid, null otherwise.
@@ -206,6 +241,12 @@ class MediaSessionMonitor : NotificationListenerService() {
             val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.takeIf { it > 0 }
             val position = playbackState?.position?.takeIf { it >= 0 }
 
+            // Store position tracking data for real-time calculation
+            lastPositionMs = position ?: 0L
+            lastPositionUpdateElapsed = playbackState?.lastPositionUpdateTime ?: SystemClock.elapsedRealtime()
+            playbackSpeed = playbackState?.playbackSpeed ?: 1.0f
+            isCurrentlyPlaying = (status == "playing")
+
             currentMedia = MediaInfo(
                 sourceApp = playingController.packageName,
                 title = title,
@@ -218,7 +259,7 @@ class MediaSessionMonitor : NotificationListenerService() {
             )
             lastUpdatedMs = System.currentTimeMillis()
 
-            Log.d(TAG, "Media updated: $title by $artist [$status] from ${playingController.packageName}")
+            Log.d(TAG, "Media updated: $title by $artist [$status] pos=${position}ms dur=${duration}ms from ${playingController.packageName}")
         } else if (activeControllers.isEmpty()) {
             // No active sessions at all — clear media
             currentMedia = null

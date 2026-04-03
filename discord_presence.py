@@ -3,12 +3,22 @@ Discord Rich Presence for Media Player API
 
 Displays currently playing media information in Discord's activity status.
 Includes elapsed/remaining time display (seek bar) when position/duration are available.
+
+Configuration
+-------------
+The Discord Client ID can be provided via (in order of precedence):
+  1. ``--client-id`` CLI argument
+  2. ``DISCORD_CLIENT_ID`` key in a ``config.json`` file in the working directory
+  3. ``DISCORD_CLIENT_ID`` variable in a ``.env`` file in the working directory
 """
 import asyncio
 import argparse
+import json
+import os
 import signal
 import sys
 import time
+from pathlib import Path
 from typing import Optional
 
 try:
@@ -20,6 +30,47 @@ except ImportError:
 
 from providers import get_provider, MediaProvider
 from providers.base import MediaInfo, PlaybackStatus
+
+
+def _load_client_id_from_config() -> Optional[str]:
+    """
+    Try to load the Discord Client ID from a config file in the current
+    working directory.
+
+    Checks (in order):
+    1. ``config.json`` → ``"DISCORD_CLIENT_ID"`` key
+    2. ``.env`` file → ``DISCORD_CLIENT_ID=<value>`` line
+    """
+    cwd = Path.cwd()
+
+    # 1. config.json
+    config_path = cwd / "config.json"
+    if config_path.exists():
+        try:
+            with config_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            client_id = data.get("DISCORD_CLIENT_ID") or data.get("discord_client_id")
+            if client_id:
+                return str(client_id).strip()
+        except Exception as exc:
+            print(f"Warning: could not read config.json: {exc}")
+
+    # 2. .env file
+    env_path = cwd / ".env"
+    if env_path.exists():
+        try:
+            with env_path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line.startswith("#") or "=" not in line:
+                        continue
+                    key, _, value = line.partition("=")
+                    if key.strip() == "DISCORD_CLIENT_ID":
+                        return value.strip().strip('"').strip("'")
+        except Exception as exc:
+            print(f"Warning: could not read .env: {exc}")
+
+    return None
 
 
 class DiscordMediaPresence:
@@ -252,16 +303,31 @@ class DiscordMediaPresence:
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Display currently playing media in Discord Rich Presence"
+        description="Display currently playing media in Discord Rich Presence",
+        epilog=(
+            "The Client ID can also be stored in config.json "
+            "(key: DISCORD_CLIENT_ID) or a .env file "
+            "(DISCORD_CLIENT_ID=...) in the current directory."
+        ),
     )
     parser.add_argument(
         "--client-id",
-        required=True,
-        help="Discord Application Client ID"
+        default=None,
+        help="Discord Application Client ID (overrides config file)",
     )
     args = parser.parse_args()
-    
-    presence = DiscordMediaPresence(args.client_id)
+
+    # Resolve client ID: CLI arg → config.json → .env
+    client_id = args.client_id
+    if not client_id:
+        client_id = _load_client_id_from_config()
+    if not client_id:
+        parser.error(
+            "Discord Client ID is required. "
+            "Pass --client-id, or set DISCORD_CLIENT_ID in config.json / .env"
+        )
+
+    presence = DiscordMediaPresence(client_id)
     
     # Handle Ctrl+C
     def signal_handler(sig, frame):

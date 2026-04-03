@@ -49,21 +49,64 @@ class PlaybackState:
 
 
 def get_vrchat_log_directory() -> Path:
-    """Get the VRChat log directory path."""
-    # Windows: %LOCALAPPDATA%Low\VRChat\VRChat
-    local_app_data = os.environ.get("LOCALAPPDATA", "")
-    if local_app_data:
-        # LOCALAPPDATA is C:\Users\xxx\AppData\Local
-        # We need C:\Users\xxx\AppData\LocalLow
-        local_low = Path(local_app_data).parent / "LocalLow"
-        vrchat_dir = local_low / "VRChat" / "VRChat"
-        if vrchat_dir.exists():
-            return vrchat_dir
-    
-    # Fallback: try common path
+    """Get the VRChat log directory path (Windows and Linux/Proton)."""
+    import platform as _platform
+    system = _platform.system()
+
+    if system == "Windows":
+        # Windows: %LOCALAPPDATA%Low\VRChat\VRChat
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if local_app_data:
+            local_low = Path(local_app_data).parent / "LocalLow"
+            vrchat_dir = local_low / "VRChat" / "VRChat"
+            if vrchat_dir.exists():
+                return vrchat_dir
+        home = Path.home()
+        return home / "AppData" / "LocalLow" / "VRChat" / "VRChat"
+
+    # Linux: VRChat running via Steam/Proton (App ID 438100)
     home = Path.home()
-    vrchat_dir = home / "AppData" / "LocalLow" / "VRChat" / "VRChat"
-    return vrchat_dir
+    proton_vrchat = (
+        home
+        / ".local"
+        / "share"
+        / "Steam"
+        / "steamapps"
+        / "compatdata"
+        / "438100"
+        / "pfx"
+        / "drive_c"
+        / "users"
+        / "steamuser"
+        / "AppData"
+        / "LocalLow"
+        / "VRChat"
+        / "VRChat"
+    )
+    if proton_vrchat.exists():
+        return proton_vrchat
+
+    # Fallback: custom Steam library path via STEAM_LIBRARY env var
+    steam_lib = os.environ.get("STEAM_LIBRARY", "")
+    if steam_lib:
+        custom_path = (
+            Path(steam_lib)
+            / "steamapps"
+            / "compatdata"
+            / "438100"
+            / "pfx"
+            / "drive_c"
+            / "users"
+            / "steamuser"
+            / "AppData"
+            / "LocalLow"
+            / "VRChat"
+            / "VRChat"
+        )
+        if custom_path.exists():
+            return custom_path
+
+    return proton_vrchat
 
 
 def get_latest_log_file(log_dir: Path) -> Optional[Path]:
@@ -81,16 +124,26 @@ def get_latest_log_file(log_dir: Path) -> Optional[Path]:
 
 
 def is_vrchat_running() -> bool:
-    """Check if VRChat process is running."""
+    """Check if VRChat process is running (Windows and Linux)."""
+    import platform as _platform
     try:
-        # Windows: use tasklist
-        result = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq VRChat.exe", "/NH"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        return "VRChat.exe" in result.stdout
+        if _platform.system() == "Windows":
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq VRChat.exe", "/NH"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return "VRChat.exe" in result.stdout
+        else:
+            # Linux (Proton): process is wine-wrapped, look for VRChat.exe in cmdline
+            result = subprocess.run(
+                ["pgrep", "-af", "VRChat.exe"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return bool(result.stdout.strip())
     except Exception:
         return True  # Assume running if check fails
 

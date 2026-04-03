@@ -25,6 +25,7 @@ class MediaApiService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "media_api_server"
         private const val DEFAULT_PORT = 8765
+        private const val WS_PORT = 8766
 
         const val ACTION_START = "com.mediaplayerapi.action.START"
         const val ACTION_STOP = "com.mediaplayerapi.action.STOP"
@@ -53,6 +54,7 @@ class MediaApiService : Service() {
     }
 
     private var httpServer: MediaHttpServer? = null
+    private var wsServer: MediaWebSocketServer? = null
     private var serverPort = DEFAULT_PORT
 
     override fun onCreate() {
@@ -94,10 +96,22 @@ class MediaApiService : Service() {
             httpServer = MediaHttpServer(serverPort).apply {
                 start()
             }
+
+            // Start WebSocket server on port WS_PORT
+            wsServer = MediaWebSocketServer(WS_PORT).apply {
+                start()
+            }
+
+            // Wire media-change callback to broadcast WebSocket updates
+            MediaSessionMonitor.onMediaChanged = { media ->
+                wsServer?.broadcastMediaUpdate(media)
+            }
+
             isRunning = true
 
             val ipAddress = NetworkUtils.getDeviceIpAddress()
             Log.i(TAG, "HTTP server started on http://$ipAddress:$serverPort")
+            Log.i(TAG, "WebSocket server started on ws://$ipAddress:$WS_PORT/ws")
 
             // Update notification with actual address
             val notificationManager = getSystemService(NotificationManager::class.java)
@@ -107,17 +121,20 @@ class MediaApiService : Service() {
             )
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start HTTP server", e)
+            Log.e(TAG, "Failed to start server", e)
             isRunning = false
             stopSelf()
         }
     }
 
     private fun stopServer() {
+        MediaSessionMonitor.onMediaChanged = null
         httpServer?.stop()
         httpServer = null
+        wsServer?.stop()
+        wsServer = null
         isRunning = false
-        Log.i(TAG, "HTTP server stopped")
+        Log.i(TAG, "Servers stopped")
     }
 
     private fun createNotificationChannel() {

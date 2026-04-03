@@ -121,7 +121,7 @@ class MediaApiService : Service() {
             )
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start server", e)
+            Log.e(TAG, "Failed to start servers (HTTP on $serverPort, WebSocket on $WS_PORT)", e)
             isRunning = false
             stopSelf()
         }

@@ -15,6 +15,13 @@ try:
 except ImportError:
     WINRT_AVAILABLE = False
 
+# Storage streams – used for thumbnail decoding
+try:
+    import winrt.windows.storage.streams as _wrt_streams
+    STREAMS_AVAILABLE = True
+except ImportError:
+    STREAMS_AVAILABLE = False
+
 # Notification listener for Amazon Music fallback
 try:
     from .notification_listener import get_notification_listener, NOTIFICATIONS_AVAILABLE
@@ -82,6 +89,31 @@ class WindowsMediaProvider(MediaProvider):
         
         return None
     
+    async def _get_thumbnail_data(self, media_properties) -> Optional[bytes]:
+        """Read album-art bytes from the SMTC thumbnail stream.
+
+        Returns raw image bytes (JPEG or PNG), or None on any error.
+        This data is only used by the local GUI; it is never sent via the API.
+        """
+        if not STREAMS_AVAILABLE:
+            return None
+        try:
+            thumb_ref = media_properties.thumbnail
+            if thumb_ref is None:
+                return None
+            stream = await thumb_ref.open_read_async()
+            if stream is None:
+                return None
+            size = stream.size
+            if size == 0:
+                return None
+            reader = _wrt_streams.DataReader(stream)
+            count = await reader.load_async(size)
+            buf = reader.read_buffer(count)
+            return bytes(buf)
+        except Exception:
+            return None
+
     async def get_current_media(self) -> Optional[MediaInfo]:
         """Get information about currently playing media."""
         try:
@@ -150,6 +182,7 @@ class WindowsMediaProvider(MediaProvider):
                 status=status,
                 position_ms=position_ms,
                 duration_ms=duration_ms,
+                thumbnail_data=await self._get_thumbnail_data(media_properties),
             )
             
         except Exception as e:

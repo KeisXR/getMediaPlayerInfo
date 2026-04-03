@@ -1,16 +1,16 @@
 """
 Now Playing widget.
 
-Shows the currently playing track with album-art placeholder, title,
-artist, album, playback-status badge, a progress bar and a
-"copy to clipboard" button.
+Shows the currently playing track with album-art (fetched via the local
+thumbnail endpoint), title, artist, album, playback-status badge, a progress
+bar and a "copy to clipboard" button.
 """
 from __future__ import annotations
 
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QClipboard
+from PySide6.QtGui import QFont, QClipboard, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -50,7 +50,8 @@ class NowPlayingWidget(QWidget):
         if not media or not media.get("title"):
             self._show_empty()
             return
-        self._show_media(media)
+        thumbnail_bytes: Optional[bytes] = data.get("thumbnail_bytes")
+        self._show_media(media, thumbnail_bytes)
 
     def clear(self) -> None:
         """Reset to the 'nothing playing' state."""
@@ -225,9 +226,10 @@ class NowPlayingWidget(QWidget):
         self._pos_label.setText("0:00")
         self._dur_label.setText("0:00")
         self._art_label.setText("🎵")
+        self._art_label.setPixmap(QPixmap())  # clear any previous image
         self._copy_btn.setEnabled(False)
 
-    def _show_media(self, media: dict) -> None:
+    def _show_media(self, media: dict, thumbnail_bytes: Optional[bytes] = None) -> None:
         title = media.get("title") or ""
         artist = media.get("artist") or ""
         album = media.get("album") or ""
@@ -246,6 +248,9 @@ class NowPlayingWidget(QWidget):
         )
         self._set_status_badge(status)
 
+        # Album art
+        self._update_art(thumbnail_bytes)
+
         # Progress
         if pos_ms is not None and dur_ms and dur_ms > 0:
             self._progress_bar.setValue(int(pos_ms / dur_ms * 1000))
@@ -257,6 +262,23 @@ class NowPlayingWidget(QWidget):
             self._dur_label.setText("")
 
         self._copy_btn.setEnabled(bool(title))
+
+    def _update_art(self, thumbnail_bytes: Optional[bytes]) -> None:
+        """Render album art from raw image bytes, or show the placeholder emoji."""
+        if thumbnail_bytes:
+            pixmap = QPixmap()
+            if pixmap.loadFromData(thumbnail_bytes):
+                scaled = pixmap.scaled(
+                    self._art_label.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self._art_label.setPixmap(scaled)
+                self._art_label.setText("")  # hide the emoji placeholder
+                return
+        # No valid image – show emoji placeholder
+        self._art_label.setPixmap(QPixmap())
+        self._art_label.setText("🎵")
 
     def _set_status_badge(self, status: str) -> None:
         status_map = {

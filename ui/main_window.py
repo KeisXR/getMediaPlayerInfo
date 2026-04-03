@@ -23,14 +23,19 @@ from PySide6.QtCore import Qt, QTimer, Slot, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QPushButton,
     QSplitter,
     QStackedWidget,
     QStatusBar,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -118,7 +123,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self) -> None:
         self.setWindowTitle(tr("app_name"))
-        self.setMinimumSize(800, 560)
+        self.setMinimumSize(860, 620)
 
         # Central widget with splitter
         central = QWidget()
@@ -399,15 +404,71 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        if self._config.minimize_to_tray and self._tray.is_available():
+        behavior = self._config.close_behavior
+        tray_available = self._tray.is_available()
+
+        if behavior == "minimize_to_tray" and tray_available:
+            event.ignore()
+            self.hide()
+            return
+        if behavior == "quit":
+            self._do_quit(event)
+            return
+
+        # behavior == "ask" (or tray not available when set to minimize)
+        if not tray_available:
+            self._do_quit(event)
+            return
+
+        # Show "minimize to tray or quit?" dialog
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("app_name"))
+        vl = QVBoxLayout(dlg)
+        vl.setSpacing(12)
+        vl.setContentsMargins(20, 20, 20, 16)
+
+        vl.addWidget(QLabel(tr("close_dialog_message")))
+
+        remember_cb = QCheckBox(tr("close_dialog_remember"))
+        vl.addWidget(remember_cb)
+
+        btn_box = QDialogButtonBox()
+        btn_tray = QPushButton(tr("close_dialog_tray"))
+        btn_quit = QPushButton(tr("close_dialog_quit"))
+        btn_box.addButton(btn_tray, QDialogButtonBox.ButtonRole.AcceptRole)
+        btn_box.addButton(btn_quit, QDialogButtonBox.ButtonRole.DestructiveRole)
+        vl.addWidget(btn_box)
+
+        choice: list[str] = ["minimize_to_tray"]
+
+        def _on_tray():
+            choice[0] = "minimize_to_tray"
+            dlg.accept()
+
+        def _on_quit():
+            choice[0] = "quit"
+            dlg.accept()
+
+        btn_tray.clicked.connect(_on_tray)
+        btn_quit.clicked.connect(_on_quit)
+
+        dlg.exec()
+
+        if remember_cb.isChecked():
+            self._config.close_behavior = choice[0]
+            self._config.save()
+
+        if choice[0] == "minimize_to_tray":
             event.ignore()
             self.hide()
         else:
-            self._stop_server()
-            # Save window geometry
-            self._config.window_width = self.width()
-            self._config.window_height = self.height()
-            self._config.window_x = self.x()
-            self._config.window_y = self.y()
-            self._config.save()
-            event.accept()
+            self._do_quit(event)
+
+    def _do_quit(self, event: QCloseEvent) -> None:
+        self._stop_server()
+        self._config.window_width = self.width()
+        self._config.window_height = self.height()
+        self._config.window_x = self.x()
+        self._config.window_y = self.y()
+        self._config.save()
+        event.accept()

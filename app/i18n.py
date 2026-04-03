@@ -133,6 +133,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "dlg_error": "エラー",
         "dlg_info": "情報",
         "dlg_warning": "警告",
+        # Close dialog
+        "close_dialog_message": "ウィンドウを閉じる際の動作を選択してください。",
+        "close_dialog_remember": "この選択を記憶する",
+        "close_dialog_tray": "トレイに最小化",
+        "close_dialog_quit": "終了",
+        # Close behavior setting
+        "set_close_behavior": "×ボタンの動作",
+        "set_close_ask": "毎回確認する",
+        "set_close_tray": "トレイに最小化",
+        "set_close_quit": "終了する",
     },
     "en": {
         # Navigation
@@ -262,6 +272,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "dlg_error": "Error",
         "dlg_info": "Info",
         "dlg_warning": "Warning",
+        # Close dialog
+        "close_dialog_message": "Choose what to do when you close the window.",
+        "close_dialog_remember": "Remember this choice",
+        "close_dialog_tray": "Minimize to tray",
+        "close_dialog_quit": "Quit",
+        # Close behavior setting
+        "set_close_behavior": "Close button behaviour",
+        "set_close_ask": "Ask every time",
+        "set_close_tray": "Minimize to tray",
+        "set_close_quit": "Quit",
     },
 }
 

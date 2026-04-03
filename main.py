@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from system_info import get_system_info
 from providers import (
@@ -39,6 +39,9 @@ CACHE_TTL_SECONDS = 30
 
 # Global filter mode (set by command line argument)
 _filter_mode = FILTER_ALL
+
+# Latest thumbnail bytes – populated from provider, never sent via public JSON endpoints
+_current_thumbnail: Optional[bytes] = None
 
 
 
@@ -71,13 +74,15 @@ def get_current_timestamp() -> str:
 
 
 def update_cache(media: Optional[MediaInfo]) -> None:
-    """Update the media cache."""
-    global media_cache
+    """Update the media cache and thumbnail store."""
+    global media_cache, _current_thumbnail
     if media is not None:
         media_cache = MediaCache(
             media=media,
             timestamp=datetime.now(timezone.utc)
         )
+        # Store thumbnail data locally; never included in JSON responses
+        _current_thumbnail = media.thumbnail_data
 
 
 def get_cached_response() -> tuple[Optional[dict], bool, str]:
@@ -279,6 +284,30 @@ async def now_playing():
                 "error": str(e)
             }
         )
+
+
+@app.get(
+    "/thumbnail",
+    summary="Current album art (localhost only)",
+    description=(
+        "Returns the raw album-art image bytes for the currently playing track. "
+        "This endpoint is restricted to localhost (127.0.0.1 / ::1) and is intended "
+        "exclusively for the local GUI application. External clients always receive 403."
+    ),
+    include_in_schema=False,  # hide from public Swagger docs
+)
+async def get_thumbnail(request: Request):
+    """Return current thumbnail image; restricted to localhost."""
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "::1", "localhost"):
+        return Response(status_code=403)
+    if _current_thumbnail is None:
+        return Response(status_code=404)
+    # Detect JPEG vs PNG by magic bytes; fall back to JPEG
+    content_type = "image/jpeg"
+    if _current_thumbnail[:8] == b"\x89PNG\r\n\x1a\n":
+        content_type = "image/png"
+    return Response(content=_current_thumbnail, media_type=content_type)
 
 
 @app.get(

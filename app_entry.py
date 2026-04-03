@@ -41,6 +41,7 @@ def main() -> int:
     try:
         from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import Qt, QCoreApplication
+        from PySide6.QtGui import QFont
     except ImportError:
         print(
             "Error: PySide6 is not installed.\n"
@@ -56,6 +57,16 @@ def main() -> int:
     app.setApplicationName("getMediaPlayerInfo Desktop")
     app.setApplicationDisplayName("getMediaPlayerInfo Desktop")
     app.setOrganizationName("KeisXR")
+
+    # Use the native system font for crisp rendering on every platform.
+    # On Windows this gives Segoe UI; on Linux the GTK/KDE default; on macOS SF Pro.
+    import platform as _plat
+    _sys = _plat.system()
+    if _sys == "Windows":
+        app.setFont(QFont("Segoe UI", 10))
+    elif _sys == "Darwin":
+        app.setFont(QFont("SF Pro Text", 13))
+    # Linux: leave Qt to pick the system font automatically
 
     # Prevent the app from quitting when the last window is hidden (tray mode)
     app.setQuitOnLastWindowClosed(False)
@@ -80,7 +91,7 @@ def main() -> int:
         config.start_minimized = True
 
     if args.no_tray:
-        config.minimize_to_tray = False
+        config.close_behavior = "quit"
 
     set_language(config.language)
 

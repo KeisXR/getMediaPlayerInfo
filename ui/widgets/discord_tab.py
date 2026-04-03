@@ -196,23 +196,41 @@ class DiscordWidget(QWidget):
                 self._set_status(True)
 
                 last_title = None
+                last_status = None
                 while self._presence_running:
                     try:
                         if self._current_media:
                             media = self._current_media
                             title = media.get("title", "")
+                            status = media.get("status", "")
                             details = self._format_template(
                                 self._details_edit.text(), media
                             )
                             state = self._format_template(
                                 self._state_edit.text(), media
                             )
-                            if title != last_title:
+                            # Re-update when title or playback status changes
+                            if title != last_title or status != last_status:
                                 last_title = title
-                                await rpc.update(
-                                    details=details[:128] if details else None,
-                                    state=state[:128] if state else None,
-                                )
+                                last_status = status
+
+                                kwargs: dict = {
+                                    "details": details[:128] if details else None,
+                                    "state": state[:128] if state else None,
+                                }
+
+                                # Add elapsed-time bar when playing with position data
+                                if status == "playing":
+                                    pos_ms = media.get("position_ms")
+                                    dur_ms = media.get("duration_ms")
+                                    if pos_ms is not None and dur_ms and dur_ms > 0:
+                                        now = time.time()
+                                        start_epoch = int(now - pos_ms / 1000)
+                                        end_epoch = int(start_epoch + dur_ms / 1000)
+                                        kwargs["start"] = start_epoch
+                                        kwargs["end"] = end_epoch
+
+                                await rpc.update(**kwargs)
                     except Exception:
                         pass
                     await asyncio.sleep(3)

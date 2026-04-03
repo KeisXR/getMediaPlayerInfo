@@ -92,10 +92,14 @@ class SettingsWidget(QWidget):
         autostart_note.setWordWrap(True)
         gen_form.addRow("", autostart_note)
 
-        # Minimize to tray
-        self._tray_cb = QCheckBox("Minimize to tray on close")
-        self._tray_cb.setChecked(self._config.minimize_to_tray)
-        gen_form.addRow("", self._tray_cb)
+        # Close behavior (replaces simple minimize-to-tray checkbox)
+        self._close_combo = QComboBox()
+        self._close_combo.addItem(tr("set_close_ask"), "ask")
+        self._close_combo.addItem(tr("set_close_tray"), "minimize_to_tray")
+        self._close_combo.addItem(tr("set_close_quit"), "quit")
+        idx = self._close_combo.findData(self._config.close_behavior)
+        self._close_combo.setCurrentIndex(max(0, idx))
+        gen_form.addRow(tr("set_close_behavior") + ":", self._close_combo)
 
         # Notifications
         self._notif_cb = QCheckBox(tr("set_notifications"))
@@ -214,7 +218,7 @@ class SettingsWidget(QWidget):
         c.theme = self._theme_combo.currentData()
         c.language = self._lang_combo.currentData()
         c.autostart = self._autostart_cb.isChecked()
-        c.minimize_to_tray = self._tray_cb.isChecked()
+        c.close_behavior = self._close_combo.currentData()
         c.notifications_enabled = self._notif_cb.isChecked()
         c.clipboard_template = self._clip_edit.text().strip() or "{title} - {artist}"
         c.cache_ttl = self._cache_ttl_spin.value()

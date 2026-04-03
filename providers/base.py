@@ -25,10 +25,11 @@ class MediaInfo:
     status: PlaybackStatus = PlaybackStatus.UNKNOWN
     position_ms: Optional[int] = None  # Current playback position in milliseconds
     duration_ms: Optional[int] = None  # Total duration in milliseconds
-    # thumbnail field removed for copyright reasons
+    # Raw thumbnail bytes – only used by the local GUI, never exposed via the public API
+    thumbnail_data: Optional[bytes] = field(default=None, repr=False)
     
     def to_dict(self) -> dict:
-        """Convert to dictionary."""
+        """Convert to dictionary.  thumbnail_data is intentionally excluded."""
         return {
             "source_app": self.source_app,
             "title": self.title,
@@ -37,7 +38,7 @@ class MediaInfo:
             "status": self.status.value,
             "position_ms": self.position_ms,
             "duration_ms": self.duration_ms,
-            "thumbnail": None  # Always return None
+            "thumbnail": None  # Always return None – never expose artwork via the API
         }
     
     def is_playing(self) -> bool:

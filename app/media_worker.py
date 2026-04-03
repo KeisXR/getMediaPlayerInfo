@@ -4,8 +4,9 @@ Background QThread that polls the local API server for media info.
 The thread issues a simple HTTP GET to /now-playing every *interval* seconds
 using Python's built-in urllib (no extra dependencies required).  When the
 media changes, it emits the ``media_updated`` signal with the raw JSON dict
-from the server.  Connection state is tracked and broadcast via
-``server_status_changed``.
+from the server, enriched with ``thumbnail_bytes`` (raw image bytes) fetched
+from the localhost-only ``/thumbnail`` endpoint.  Connection state is tracked
+and broadcast via ``server_status_changed``.
 """
 from __future__ import annotations
 
@@ -19,9 +20,10 @@ from PySide6.QtCore import QThread, Signal
 
 
 class MediaPollThread(QThread):
-    """Polls GET /now-playing and emits signals on changes."""
+    """Polls GET /now-playing (and /thumbnail) and emits signals on changes."""
 
-    #: Emitted with the full JSON response dict from the server.
+    #: Emitted with the full JSON response dict from the server, plus an optional
+    #: ``thumbnail_bytes`` key containing raw image bytes (or None).
     media_updated = Signal(dict)
 
     #: Emitted when the connection state to the local server changes.
@@ -66,6 +68,9 @@ class MediaPollThread(QThread):
                     was_connected = True
                     self.server_status_changed.emit(True)
 
+                # Try to fetch album art from the localhost-only endpoint
+                data["thumbnail_bytes"] = self._fetch_thumbnail()
+
                 # Always emit the latest data so the UI stays fresh
                 self.media_updated.emit(data)
 
@@ -80,6 +85,17 @@ class MediaPollThread(QThread):
             deadline = time.monotonic() + self.interval
             while self._running and time.monotonic() < deadline:
                 time.sleep(0.1)
+
+    def _fetch_thumbnail(self) -> Optional[bytes]:
+        """Fetch raw thumbnail bytes from the localhost-only /thumbnail endpoint."""
+        try:
+            url = f"http://127.0.0.1:{self.port}/thumbnail"
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                if resp.status == 200:
+                    return resp.read()
+        except Exception:
+            pass
+        return None
 
     def stop(self) -> None:
         """Ask the thread to stop gracefully."""

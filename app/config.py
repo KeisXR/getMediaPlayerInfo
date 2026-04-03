@@ -46,7 +46,8 @@ class AppConfig:
     window_y: int = -1
 
     # Behavior
-    minimize_to_tray: bool = True
+    minimize_to_tray: bool = True   # kept for backwards compatibility
+    close_behavior: str = "ask"     # ask | minimize_to_tray | quit
     start_minimized: bool = False
     autostart: bool = False
 

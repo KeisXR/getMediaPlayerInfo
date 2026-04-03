@@ -8,8 +8,7 @@
 |----------|---------|------|
 | Windows | SMTC | Windows 10以降 |
 | Linux | MPRIS (D-Bus) / WayDroid (Shell) | D-Bus対応プレイヤー / WayDroidコンテナ内のアプリ |
-| Android (App) | MediaSession API | v2で再作成 |
-| Android (Shell) | dumpsys | 実装不備により動作しません |
+| Android (App) | MediaSession API | android-app-v2 |
 
 ## 起動方法
 
@@ -44,16 +43,6 @@ WayDroid内のメディア情報を取得するには、以下の設定を行っ
 5. `http://<端末IP>:8765/now-playing` でアクセス
 
 ※ GitHub Actionsでビルド: `android-app-v2/` ディレクトリ参照
-
-### Android (Termux + Python)
-```bash
-# ファイルを転送してインストール
-adb push android-standalone /sdcard/media-api
-adb shell su -c 'sh /sdcard/media-api/install.sh'
-
-# 起動
-adb shell su -c '/data/local/tmp/media-api/start.sh'
-```
 
 ## Discord Rich Presence 連携
 

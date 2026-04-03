@@ -51,6 +51,13 @@ class MediaSessionMonitor : NotificationListenerService() {
         private var instance: MediaSessionMonitor? = null
 
         /**
+         * Callback invoked on the calling thread whenever media info changes.
+         * Register from MediaApiService to push WebSocket updates.
+         */
+        @Volatile
+        var onMediaChanged: ((MediaInfo?) -> Unit)? = null
+
+        /**
          * Get current media info with real-time position calculation.
          * For playing media, the position is extrapolated based on elapsed time
          * since the last PlaybackState update.
@@ -260,11 +267,13 @@ class MediaSessionMonitor : NotificationListenerService() {
             lastUpdatedMs = System.currentTimeMillis()
 
             Log.d(TAG, "Media updated: $title by $artist [$status] pos=${position}ms dur=${duration}ms from ${playingController.packageName}")
+            onMediaChanged?.invoke(currentMedia)
         } else if (activeControllers.isEmpty()) {
             // No active sessions at all — clear media
             currentMedia = null
             lastUpdatedMs = System.currentTimeMillis()
             Log.d(TAG, "No active media sessions")
+            onMediaChanged?.invoke(null)
         }
         // If controllers exist but none are playing/paused, keep the last known state
     }

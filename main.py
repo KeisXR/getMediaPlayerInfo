@@ -25,10 +25,11 @@ from providers import (
     FILTER_APPS_ONLY,
 )
 
-# VRChat provider (Windows only, optional)
+# VRChat provider (Windows and Linux/Proton, optional)
 try:
     from providers import get_vrchat_provider
-    VRCHAT_AVAILABLE = True
+    import platform as _platform
+    VRCHAT_AVAILABLE = _platform.system() in ("Windows", "Linux")
 except ImportError:
     VRCHAT_AVAILABLE = False
 
@@ -188,7 +189,14 @@ app.add_middleware(
 )
 
 
-@app.get("/")
+@app.get(
+    "/",
+    summary="API status",
+    description=(
+        "Returns the current status of the Media Player API server, "
+        "including system information, active provider class name, and cache TTL."
+    ),
+)
 async def root():
     """API status endpoint."""
     system_info = get_system_info()
@@ -202,7 +210,17 @@ async def root():
     }
 
 
-@app.get("/now-playing")
+@app.get(
+    "/now-playing",
+    summary="Current media info",
+    description=(
+        "Returns information about the currently playing media (title, artist, album, "
+        "playback status, position, duration). "
+        "Falls back to a 30-second cache when the provider returns no data or errors. "
+        "Returns HTTP 503 when no media provider is available, "
+        "or HTTP 500 on an unrecoverable provider error with no cached data."
+    ),
+)
 async def now_playing():
     """Get currently playing media information."""
     system_info = get_system_info()
@@ -263,7 +281,15 @@ async def now_playing():
         )
 
 
-@app.get("/vrchat/now-playing")
+@app.get(
+    "/vrchat/now-playing",
+    summary="VRChat media info",
+    description=(
+        "Returns the video currently playing inside VRChat by monitoring the game's log files. "
+        "Available on Windows and Linux (Steam/Proton). "
+        "Falls back to the main media provider when VRChat is not running or no log entry is found."
+    ),
+)
 async def vrchat_now_playing():
     """Get currently playing video in VRChat, with fallback to main media provider."""
     system_info = get_system_info()
@@ -317,7 +343,15 @@ async def vrchat_now_playing():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time media updates."""
+    """
+    WebSocket endpoint for real-time media updates.
+
+    On connection the server immediately sends a `connected` message with the
+    current media state. Subsequent `media_update` messages are pushed whenever
+    the media changes. The client can send `"ping"` to receive `"pong"` for
+    keepalive; the server also sends `{"type":"ping"}` every 30 seconds of
+    inactivity.
+    """
     await websocket.accept()
     connected_clients.add(websocket)
     

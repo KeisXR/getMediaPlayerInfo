@@ -2,23 +2,8 @@
 Media providers package.
 """
 import platform
-import os
 from typing import Optional, Set
 from .base import MediaProvider, MediaInfo
-
-
-def _is_android() -> bool:
-    """Check if running on Android (Termux)."""
-    # Check for Termux-specific environment
-    if os.environ.get("TERMUX_VERSION"):
-        return True
-    # Check for Android-specific paths
-    if os.path.exists("/system/build.prop"):
-        return True
-    # Check PREFIX (Termux sets this)
-    if "/com.termux" in os.environ.get("PREFIX", ""):
-        return True
-    return False
 
 
 # Filter mode constants
@@ -45,12 +30,12 @@ def get_provider(filter_mode: str = FILTER_ALL) -> MediaProvider:
         from .linux import BROWSER_PLAYERS
         excluded_players = set(BROWSER_PLAYERS)
     
-    if system == "Linux" and _is_android():
-        from .android import AndroidMediaProvider
-        return AndroidMediaProvider()
-    elif system == "Windows":
+    if system == "Windows":
         from .windows import WindowsMediaProvider
         return WindowsMediaProvider()
+    elif system == "Darwin":
+        from .macos import MacOSMediaProvider
+        return MacOSMediaProvider()
     elif system == "Linux":
         # Use HybridLinuxMediaProvider which combines MPRIS + WayDroid
         from .linux import HybridLinuxMediaProvider
@@ -60,19 +45,19 @@ def get_provider(filter_mode: str = FILTER_ALL) -> MediaProvider:
 
 
 def get_vrchat_provider() -> MediaProvider:
-    """Get the VRChat media provider (Windows only)."""
+    """Get the VRChat media provider (Windows and Linux/Proton)."""
     system = platform.system()
-    if system != "Windows":
-        raise NotImplementedError("VRChat provider is only available on Windows")
+    if system not in ("Windows", "Linux"):
+        raise NotImplementedError("VRChat provider is only available on Windows and Linux")
     
     from .vrchat import VRChatMediaProvider
     return VRChatMediaProvider()
 
 
 __all__ = [
-    "MediaProvider", 
-    "MediaInfo", 
-    "get_provider", 
+    "MediaProvider",
+    "MediaInfo",
+    "get_provider",
     "get_vrchat_provider",
     "FILTER_ALL",
     "FILTER_NO_BROWSER",

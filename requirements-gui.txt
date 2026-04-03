@@ -1,0 +1,20 @@
+# GUI-specific dependencies for getMediaPlayerInfo Desktop
+# Install with: pip install -r requirements-gui.txt
+
+# GUI Framework
+PySide6>=6.6.0
+
+# Optional: QR code generation for mobile access (API Server tab)
+# Install for QR display: pip install qrcode[pil]
+# qrcode[pil]>=7.4.2
+
+# Optional: Last.fm scrobbling
+# pylast>=5.2.0
+
+# Base dependencies (already in requirements.txt — repeated here for convenience)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+aiohttp>=3.9.0
+yt-dlp>=2024.0.0
+pypresence>=4.3.0

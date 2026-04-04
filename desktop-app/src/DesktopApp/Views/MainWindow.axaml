@@ -46,9 +46,12 @@
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Grid.Column="0"
                    Text="{Binding NowPlaying.ConnectionStatus}"
-                   Foreground="{Binding NowPlaying.ConnectionColor}"
                    VerticalAlignment="Center"
-                   FontSize="12" />
+                   FontSize="12">
+          <TextBlock.Foreground>
+            <SolidColorBrush Color="{Binding NowPlaying.ConnectionColor}" />
+          </TextBlock.Foreground>
+        </TextBlock>
         <TextBlock Grid.Column="1"
                    Text="{Binding NowPlaying.ServerInfo}"
                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"

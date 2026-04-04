@@ -5,6 +5,7 @@ namespace DesktopApp.Models;
 /// </summary>
 public record HistoryEntry
 {
+    /// <summary>Timestamp in local time (for display purposes).</summary>
     public DateTime Timestamp { get; init; } = DateTime.Now;
     public string Title { get; init; } = string.Empty;
     public string Artist { get; init; } = string.Empty;
@@ -22,8 +23,8 @@ public record HistoryEntry
     public static HistoryEntry FromMedia(MediaInfo media, string connectionName) =>
         new()
         {
-            Timestamp     = DateTime.Now,
-            Title         = media.Title,
+            Timestamp      = DateTime.Now,  // local time for UI display
+            Title          = media.Title,
             Artist        = media.Artist,
             Album         = media.Album,
             SourceApp     = media.SourceApp,

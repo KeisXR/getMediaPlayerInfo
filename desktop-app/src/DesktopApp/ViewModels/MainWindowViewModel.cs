@@ -113,7 +113,9 @@ public partial class MainWindowViewModel : ViewModelBase, IAsyncDisposable
     {
         var connection = Settings.GetActiveConnection();
 
-        _apiClient?.DisposeAsync();
+        // Previous client is always stopped before Connect() is called from
+        // RestartClientAsync(). The guard here is only for the initial call
+        // from the constructor (where _apiClient is null).
         _apiClient = new ApiClient(
             connection,
             _config.PollingIntervalMs,

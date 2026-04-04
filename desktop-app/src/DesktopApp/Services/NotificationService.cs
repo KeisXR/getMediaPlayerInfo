@@ -48,13 +48,13 @@ public class NotificationService
     private static void ShowWindows(string title, string body)
     {
         // Use PowerShell Toast notification (works on Windows 10/11 without extra packages).
-        var escaped_title = title.Replace("'", "''");
-        var escaped_body  = body.Replace("'", "''");
+        var escapedTitle = title.Replace("'", "''");
+        var escapedBody  = body.Replace("'", "''");
         var script = $"""
             [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime] | Out-Null
             $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-            $template.SelectSingleNode('//text[@id=1]').InnerText = '{escaped_title}'
-            $template.SelectSingleNode('//text[@id=2]').InnerText = '{escaped_body}'
+            $template.SelectSingleNode('//text[@id=1]').InnerText = '{escapedTitle}'
+            $template.SelectSingleNode('//text[@id=2]').InnerText = '{escapedBody}'
             $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
             [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('getMediaPlayerInfo').Show($toast)
             """;
@@ -64,9 +64,9 @@ public class NotificationService
 
     private static void ShowMacOs(string title, string body)
     {
-        var escaped_title = title.Replace("\"", "\\\"");
-        var escaped_body  = body.Replace("\"", "\\\"");
-        RunProcess("osascript", $"-e 'display notification \"{escaped_body}\" with title \"{escaped_title}\"'");
+        var escapedTitle = title.Replace("\"", "\\\"");
+        var escapedBody  = body.Replace("\"", "\\\"");
+        RunProcess("osascript", $"-e 'display notification \"{escapedBody}\" with title \"{escapedTitle}\"'");
     }
 
     private static void ShowLinux(string title, string body)

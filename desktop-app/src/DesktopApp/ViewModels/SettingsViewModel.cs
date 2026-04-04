@@ -143,7 +143,10 @@ public partial class SettingsViewModel : ViewModelBase
         ApplyConnection();
 
         _config.Connections           = Connections.ToList();
-        _config.ActiveConnectionIndex = Math.Max(0, Connections.IndexOf(SelectedConnection!));
+        var selectedIdx = SelectedConnection is not null
+            ? Connections.IndexOf(SelectedConnection)
+            : -1;
+        _config.ActiveConnectionIndex = selectedIdx >= 0 ? selectedIdx : 0;
         _config.PollingIntervalMs     = PollingIntervalMs;
         _config.UseWebSocket          = UseWebSocket;
         _config.NotificationsEnabled  = NotificationsEnabled;

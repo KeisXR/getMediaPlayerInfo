@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DesktopApp.ViewModels"
+        xmlns:views="using:DesktopApp.Views"
+        x:Class="DesktopApp.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding WindowTitle}"
+        Width="960"
+        Height="680"
+        MinWidth="780"
+        MinHeight="560"
+        Icon="/Assets/icon.ico"
+        Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+
+  <Window.Styles>
+    <!-- Status indicator dot -->
+    <Style Selector="Ellipse.status-dot">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Card-style border -->
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="Margin" Value="4" />
+    </Style>
+
+    <!-- Tab header text -->
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Padding" Value="16,10" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <!-- ── Status bar ────────────────────────────────────────────────── -->
+    <Border DockPanel.Dock="Bottom"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+            Padding="12,4"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0"
+                   Text="{Binding NowPlaying.ConnectionStatus}"
+                   Foreground="{Binding NowPlaying.ConnectionColor}"
+                   VerticalAlignment="Center"
+                   FontSize="12" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding NowPlaying.ServerInfo}"
+                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                   VerticalAlignment="Center"
+                   FontSize="11" />
+      </Grid>
+    </Border>
+
+    <!-- ── Main tab control ──────────────────────────────────────────── -->
+    <TabControl SelectedIndex="{Binding SelectedTabIndex}"
+                Margin="0">
+
+      <!-- Now Playing -->
+      <TabItem Header="🎵  Now Playing">
+        <views:NowPlayingView DataContext="{Binding NowPlaying}" />
+      </TabItem>
+
+      <!-- History -->
+      <TabItem Header="📋  History">
+        <views:HistoryView DataContext="{Binding History}" />
+      </TabItem>
+
+      <!-- Settings -->
+      <TabItem Header="⚙  Settings">
+        <views:SettingsView DataContext="{Binding Settings}" />
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>

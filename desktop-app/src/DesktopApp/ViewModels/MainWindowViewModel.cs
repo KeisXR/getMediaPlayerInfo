@@ -37,6 +37,8 @@ public partial class MainWindowViewModel : ViewModelBase, IAsyncDisposable
     [ObservableProperty] private int _selectedTabIndex = 0;
     [ObservableProperty] private string _windowTitle = "getMediaPlayerInfo";
     [ObservableProperty] private string _trayTooltip = "getMediaPlayerInfo";
+    [ObservableProperty] private string _debugLogText = string.Empty;
+    [ObservableProperty] private bool _debugModeEnabled = true;
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -105,6 +107,26 @@ public partial class MainWindowViewModel : ViewModelBase, IAsyncDisposable
     [RelayCommand]
     private void NavigateToSettings() => SelectedTabIndex = 2;
 
+    [RelayCommand]
+    private void NavigateToDebug() => SelectedTabIndex = 3;
+
+    [RelayCommand]
+    private void ClearDebugLog() => DebugLogText = string.Empty;
+
+    [RelayCommand]
+    private async Task CopyDebugLog()
+    {
+        if (string.IsNullOrWhiteSpace(DebugLogText))
+            return;
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } win })
+        {
+            var clipboard = TopLevel.GetTopLevel(win)?.Clipboard;
+            if (clipboard is not null)
+                await clipboard.SetTextAsync(DebugLogText);
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Connection management
     // -----------------------------------------------------------------------
@@ -131,6 +153,13 @@ public partial class MainWindowViewModel : ViewModelBase, IAsyncDisposable
                 WindowTitle = e.State == ConnectionState.Connected
                     ? $"getMediaPlayerInfo — {connection.Name}"
                     : "getMediaPlayerInfo");
+        };
+
+        _apiClient.DebugLog += (_, msg) =>
+        {
+            if (!DebugModeEnabled)
+                return;
+            Dispatcher.UIThread.Post(() => AppendDebugLog(msg));
         };
 
         _apiClient.Start();
@@ -164,5 +193,21 @@ public partial class MainWindowViewModel : ViewModelBase, IAsyncDisposable
             await _apiClient.DisposeAsync();
 
         NowPlaying.Dispose();
+    }
+
+    private void AppendDebugLog(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return;
+
+        const int maxChars = 40_000;
+        var next = string.IsNullOrEmpty(DebugLogText)
+            ? line
+            : $"{DebugLogText}{Environment.NewLine}{line}";
+
+        if (next.Length > maxChars)
+            next = next[^maxChars..];
+
+        DebugLogText = next;
     }
 }

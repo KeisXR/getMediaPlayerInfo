@@ -57,6 +57,7 @@ public sealed class ApiClient : IAsyncDisposable
 
     public event EventHandler<MediaUpdatedEventArgs>? MediaUpdated;
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
+    public event EventHandler<string>? DebugLog;
 
     public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
 
@@ -82,6 +83,7 @@ public sealed class ApiClient : IAsyncDisposable
         if (_runTask is { IsCompleted: false })
             return;
 
+        LogDebug($"Starting ApiClient. Mode={(_useWebSocket ? "WebSocket" : "Polling")} Endpoint={_connection.BaseUrl}");
         _cts = new CancellationTokenSource();
         _runTask = RunAsync(_cts.Token);
     }
@@ -92,6 +94,7 @@ public sealed class ApiClient : IAsyncDisposable
         if (_cts is null)
             return;
 
+        LogDebug("Stopping ApiClient.");
         await _cts.CancelAsync();
         if (_runTask is not null)
         {
@@ -114,9 +117,26 @@ public sealed class ApiClient : IAsyncDisposable
             try
             {
                 if (_useWebSocket)
-                    await RunWebSocketAsync(ct).ConfigureAwait(false);
+                {
+                    try
+                    {
+                        await RunWebSocketAsync(ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception wsEx)
+                    {
+                        LogDebug($"WebSocket failed: {wsEx.Message}");
+                        LogDebug("Falling back to HTTP polling mode.");
+                        await RunPollingAsync(ct).ConfigureAwait(false);
+                    }
+                }
                 else
+                {
                     await RunPollingAsync(ct).ConfigureAwait(false);
+                }
 
                 backoffMs = 1000;
             }
@@ -126,12 +146,14 @@ public sealed class ApiClient : IAsyncDisposable
             }
             catch (Exception ex)
             {
+                LogDebug($"Run loop error: {ex.Message}. Retrying in {backoffMs}ms.");
                 SetState(ConnectionState.Error, ex.Message);
                 await Task.Delay(backoffMs, ct).ConfigureAwait(false);
                 backoffMs = Math.Min(backoffMs * 2, 30_000);
             }
         }
 
+        LogDebug("ApiClient stopped.");
         SetState(ConnectionState.Disconnected);
     }
 
@@ -142,11 +164,13 @@ public sealed class ApiClient : IAsyncDisposable
     private async Task RunWebSocketAsync(CancellationToken ct)
     {
         SetState(ConnectionState.Connecting);
+        LogDebug($"Connecting WebSocket: {_connection.WsUrl}");
 
         _ws?.Dispose();
         _ws = new ClientWebSocket();
 
         await _ws.ConnectAsync(new Uri(_connection.WsUrl), ct).ConfigureAwait(false);
+        LogDebug("WebSocket connected.");
         SetState(ConnectionState.Connected);
 
         var buffer = new byte[64 * 1024];
@@ -183,7 +207,10 @@ public sealed class ApiClient : IAsyncDisposable
 
             var msg = JsonSerializer.Deserialize<WsMessage>(json, JsonOptions);
             if (msg?.Type is "connected" or "media_update")
+            {
+                LogDebug($"WebSocket message: {msg.Type} media={(msg.Media is null ? "null" : msg.Media.Title)}");
                 RaiseMediaUpdated(msg.Media, msg.System, msg.Cached);
+            }
         }
     }
 
@@ -194,10 +221,13 @@ public sealed class ApiClient : IAsyncDisposable
     private async Task RunPollingAsync(CancellationToken ct)
     {
         SetState(ConnectionState.Connecting);
+        LogDebug($"Starting HTTP polling: {_connection.NowPlayingUrl} every {_pollingIntervalMs}ms");
 
         // Verify reachability first
-        await FetchNowPlayingAsync(ct).ConfigureAwait(false);
+        var initial = await FetchNowPlayingAsync(ct).ConfigureAwait(false);
         SetState(ConnectionState.Connected);
+        if (initial is not null)
+            RaiseMediaUpdated(initial.Media, initial.System, initial.Cached);
 
         while (!ct.IsCancellationRequested)
         {
@@ -205,10 +235,14 @@ public sealed class ApiClient : IAsyncDisposable
             {
                 var resp = await FetchNowPlayingAsync(ct).ConfigureAwait(false);
                 if (resp is not null)
+                {
+                    LogDebug($"HTTP media update: {(resp.Media is null ? "null" : resp.Media.Title)}");
                     RaiseMediaUpdated(resp.Media, resp.System, resp.Cached);
+                }
             }
             catch (HttpRequestException ex)
             {
+                LogDebug($"HTTP polling error: {ex.Message}");
                 SetState(ConnectionState.Error, ex.Message);
                 throw;
             }
@@ -219,8 +253,21 @@ public sealed class ApiClient : IAsyncDisposable
 
     private async Task<ApiResponse?> FetchNowPlayingAsync(CancellationToken ct)
     {
-        var json = await _http.GetStringAsync(_connection.NowPlayingUrl, ct).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<ApiResponse>(json, JsonOptions);
+        using var response = await _http.GetAsync(_connection.NowPlayingUrl, ct).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var snippet = body.Length > 200 ? body[..200] + "..." : body;
+            throw new HttpRequestException(
+                $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {snippet}");
+        }
+
+        var parsed = JsonSerializer.Deserialize<ApiResponse>(body, JsonOptions);
+        if (parsed is null)
+            throw new HttpRequestException("Failed to deserialize /now-playing response.");
+
+        return parsed;
     }
 
     // -----------------------------------------------------------------------
@@ -235,8 +282,14 @@ public sealed class ApiClient : IAsyncDisposable
         if (State == state && error is null)
             return;
         State = state;
+        LogDebug(error is null
+            ? $"Connection state: {state}"
+            : $"Connection state: {state} ({error})");
         ConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(state, error));
     }
+
+    private void LogDebug(string message) =>
+        DebugLog?.Invoke(this, $"[{DateTime.Now:HH:mm:ss}] {message}");
 
     public async ValueTask DisposeAsync()
     {

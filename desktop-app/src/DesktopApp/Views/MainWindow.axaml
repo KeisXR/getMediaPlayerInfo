@@ -79,6 +79,40 @@
         <views:SettingsView DataContext="{Binding Settings}" />
       </TabItem>
 
+      <!-- Debug / Stats -->
+      <TabItem Header="📊  Stats">
+        <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*">
+            <CheckBox Grid.Column="0"
+                      Content="Enable Debug Logs"
+                      IsChecked="{Binding DebugModeEnabled}"
+                      Margin="0,0,8,0" />
+            <Button Grid.Column="1"
+                    Content="📋 Copy Log"
+                    Command="{Binding CopyDebugLogCommand}"
+                    Margin="0,0,8,0" />
+            <Button Grid.Column="2"
+                    Content="🗑 Clear"
+                    Command="{Binding ClearDebugLogCommand}" />
+          </Grid>
+
+          <ScrollViewer Grid.Row="1" Margin="0,10,0,10"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Auto">
+            <TextBox Text="{Binding DebugLogText}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="NoWrap"
+                     FontFamily="Consolas, Menlo, monospace" />
+          </ScrollViewer>
+
+          <TextBlock Grid.Row="2"
+                     Text="Tip: 接続失敗時はここに WebSocket フォールバックや HTTP エラー詳細が出ます。"
+                     FontSize="12"
+                     Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Grid>
+      </TabItem>
+
     </TabControl>
   </DockPanel>
 </Window>

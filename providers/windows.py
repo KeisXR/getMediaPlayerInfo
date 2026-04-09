@@ -4,6 +4,7 @@ Uses winrt-python package for Windows Runtime API access.
 Includes fallback to notification listener for Amazon Music.
 """
 import asyncio
+import logging
 from typing import Optional, Any
 
 from .base import MediaProvider, MediaInfo, PlaybackStatus
@@ -22,6 +23,9 @@ except ImportError:
     NOTIFICATIONS_AVAILABLE = False
     def get_notification_listener():
         return None
+
+
+logger = logging.getLogger(__name__)
 
 
 class WindowsMediaProvider(MediaProvider):
@@ -158,7 +162,7 @@ class WindowsMediaProvider(MediaProvider):
                         "album": album,
                     }
             except Exception as e:
-                print(f"Error reading session metadata: {e}")
+                logger.debug("Error reading session metadata: %s", e)
 
         return best
     
@@ -178,7 +182,7 @@ class WindowsMediaProvider(MediaProvider):
                     status=status
                 )
         except Exception as e:
-            print(f"Error in notification fallback: {e}")
+            logger.debug("Error in notification fallback: %s", e)
         
         return None
     
@@ -244,7 +248,7 @@ class WindowsMediaProvider(MediaProvider):
             )
             
         except Exception as e:
-            print(f"Error getting current media: {e}")
+            logger.debug("Error getting current media: %s", e)
             return None
     
     async def start_watching(self) -> None:
@@ -283,7 +287,7 @@ class WindowsMediaProvider(MediaProvider):
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Error in watch loop: {e}")
+                logger.debug("Error in watch loop: %s", e)
                 await asyncio.sleep(1)
     
     def _has_changed(self, current: Optional[MediaInfo]) -> bool:

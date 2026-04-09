@@ -83,5 +83,6 @@ async def test_select_best_session_prefers_playing_and_richer_metadata():
 
     assert selected is not None
     assert selected["session"] is playing_without_title
+    assert playing_without_title.source_app_user_model_id.endswith(".exe")
     assert selected["source_app"] == "RadioApp"
     assert selected["artist"] == "Radio Station"

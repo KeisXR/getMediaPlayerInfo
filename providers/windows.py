@@ -203,7 +203,7 @@ class WindowsMediaProvider(MediaProvider):
             
             # Check if SMTC data is incomplete for known problematic apps
             missing_primary_fields = not title and not artist
-            missing_all_fields = missing_primary_fields and not album
+            has_no_metadata = missing_primary_fields and not album
             needs_fallback = self._is_fallback_app(source_app) and missing_primary_fields
             
             if needs_fallback:
@@ -213,7 +213,7 @@ class WindowsMediaProvider(MediaProvider):
                     return fallback_info
 
             # If we have absolutely no media fields, treat as no media.
-            if missing_all_fields:
+            if has_no_metadata:
                 return None
 
             title = self._coalesce_title(title, artist, album, source_app)

@@ -1,0 +1,42 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DesktopApp.ViewModels"
+             xmlns:views="using:DesktopApp.Views"
+             x:Class="DesktopApp.App"
+             RequestedThemeVariant="Default">
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:NowPlayingViewModel">
+      <views:NowPlayingView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:HistoryViewModel">
+      <views:HistoryView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <views:SettingsView />
+    </DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+  </Application.Styles>
+
+  <!-- System tray icon -->
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon ToolTipText="getMediaPlayerInfo">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Show Window"
+                            Command="{Binding ShowWindowCommand}" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Exit"
+                            Command="{Binding ExitAppCommand}" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+
+</Application>

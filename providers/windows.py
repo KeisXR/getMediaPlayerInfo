@@ -4,7 +4,8 @@ Uses winrt-python package for Windows Runtime API access.
 Includes fallback to notification listener for Amazon Music.
 """
 import asyncio
-from typing import Optional
+import logging
+from typing import Optional, Any
 
 from .base import MediaProvider, MediaInfo, PlaybackStatus
 
@@ -22,6 +23,9 @@ except ImportError:
     NOTIFICATIONS_AVAILABLE = False
     def get_notification_listener():
         return None
+
+
+logger = logging.getLogger(__name__)
 
 
 class WindowsMediaProvider(MediaProvider):
@@ -61,6 +65,106 @@ class WindowsMediaProvider(MediaProvider):
         """Check if this app needs notification fallback."""
         app_lower = source_app.lower().replace(" ", "").replace("_", "")
         return any(fb in app_lower for fb in self.FALLBACK_APPS)
+
+    @staticmethod
+    def _status_priority(status: PlaybackStatus) -> int:
+        """Priority for selecting the best session."""
+        if status == PlaybackStatus.PLAYING:
+            return 3
+        if status == PlaybackStatus.PAUSED:
+            return 2
+        if status == PlaybackStatus.STOPPED:
+            return 1
+        return 0
+
+    @staticmethod
+    def _metadata_priority(title: str, artist: str, album: str) -> int:
+        """Priority for selecting richer metadata."""
+        if title:
+            return 3
+        if artist:
+            return 2
+        if album:
+            return 1
+        return 0
+
+    @staticmethod
+    def _normalize_source_app(source_app: str) -> str:
+        """Normalize app name from source_app_user_model_id."""
+        normalized = source_app or ""
+        if "\\" in normalized or "/" in normalized:
+            normalized = normalized.split("\\")[-1].split("/")[-1]
+        if normalized.endswith(".exe"):
+            normalized = normalized[:-4]
+        return normalized
+
+    @staticmethod
+    def _coalesce_title(title: str, artist: str, album: str, source_app: str) -> str:
+        """Ensure title is not empty when at least some station/media info exists."""
+        if title:
+            return title
+        return artist or album or source_app
+
+    async def _select_best_session_data(self, manager: Any) -> Optional[dict]:
+        """
+        Select the best session from all available sessions.
+        Prefers playing sessions and richer metadata over current-session-only selection.
+        """
+        try:
+            current = manager.get_current_session()
+        except Exception:
+            current = None
+
+        sessions = []
+        if current is not None:
+            sessions.append(current)
+
+        try:
+            all_sessions = manager.get_sessions()
+            if all_sessions:
+                for s in all_sessions:
+                    if s is not None and all(existing is not s for existing in sessions):
+                        sessions.append(s)
+        except Exception:
+            pass
+
+        best: Optional[dict] = None
+        best_score = (-1, -1, -1)
+
+        for session in sessions:
+            try:
+                media_properties = await session.try_get_media_properties_async()
+                if media_properties is None:
+                    continue
+
+                playback_info = session.get_playback_info()
+                status = self._convert_playback_status(playback_info.playback_status)
+
+                source_app = self._normalize_source_app(session.source_app_user_model_id or "")
+                title = (media_properties.title or "").strip()
+                artist = (media_properties.artist or "").strip()
+                album = (media_properties.album_title or "").strip()
+
+                score = (
+                    self._status_priority(status),
+                    self._metadata_priority(title, artist, album),
+                    1 if session is current else 0,
+                )
+
+                if score > best_score:
+                    best_score = score
+                    best = {
+                        "session": session,
+                        "status": status,
+                        "source_app": source_app,
+                        "title": title,
+                        "artist": artist,
+                        "album": album,
+                    }
+            except Exception as e:
+                logger.debug("Error reading session metadata: %s", e)
+
+        return best
     
     async def _try_notification_fallback(self, source_app: str, status: PlaybackStatus) -> Optional[MediaInfo]:
         """Try to get media info from notification listener."""
@@ -78,7 +182,7 @@ class WindowsMediaProvider(MediaProvider):
                     status=status
                 )
         except Exception as e:
-            print(f"Error in notification fallback: {e}")
+            logger.debug("Error in notification fallback: %s", e)
         
         return None
     
@@ -86,41 +190,33 @@ class WindowsMediaProvider(MediaProvider):
         """Get information about currently playing media."""
         try:
             manager = await self._get_session_manager()
-            session = manager.get_current_session()
-            
-            if session is None:
+            selected = await self._select_best_session_data(manager)
+            if selected is None:
                 return None
-            
-            # Get media properties
-            media_properties = await session.try_get_media_properties_async()
-            if media_properties is None:
-                return None
-            
-            # Get playback info
-            playback_info = session.get_playback_info()
-            status = self._convert_playback_status(playback_info.playback_status)
-            
-            # Get source app name
-            source_app = session.source_app_user_model_id or ""
-            # Clean up the app name (remove path-like parts)
-            if "\\" in source_app or "/" in source_app:
-                source_app = source_app.split("\\")[-1].split("/")[-1]
-            if source_app.endswith(".exe"):
-                source_app = source_app[:-4]
-            
-            title = media_properties.title or ""
-            artist = media_properties.artist or ""
-            album = media_properties.album_title or ""
+
+            session = selected["session"]
+            status = selected["status"]
+            source_app = selected["source_app"]
+            title = selected["title"]
+            artist = selected["artist"]
+            album = selected["album"]
             
             # Check if SMTC data is incomplete for known problematic apps
-            is_incomplete = not title and not artist
-            needs_fallback = self._is_fallback_app(source_app) and is_incomplete
+            missing_primary_fields = not title and not artist
+            has_no_metadata = missing_primary_fields and not album
+            needs_fallback = self._is_fallback_app(source_app) and missing_primary_fields
             
             if needs_fallback:
                 # Try notification fallback for Amazon Music
                 fallback_info = await self._try_notification_fallback(source_app, status)
                 if fallback_info:
                     return fallback_info
+
+            # If we have absolutely no media fields, treat as no media.
+            if has_no_metadata:
+                return None
+
+            title = self._coalesce_title(title, artist, album, source_app)
             
             # Get timeline properties for position/duration
             position_ms = None
@@ -153,7 +249,7 @@ class WindowsMediaProvider(MediaProvider):
             )
             
         except Exception as e:
-            print(f"Error getting current media: {e}")
+            logger.debug("Error getting current media: %s", e)
             return None
     
     async def start_watching(self) -> None:
@@ -192,7 +288,7 @@ class WindowsMediaProvider(MediaProvider):
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Error in watch loop: {e}")
+                logger.debug("Error in watch loop: %s", e)
                 await asyncio.sleep(1)
     
     def _has_changed(self, current: Optional[MediaInfo]) -> bool:

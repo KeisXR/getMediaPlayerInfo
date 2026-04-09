@@ -18,6 +18,14 @@ android-app/local.properties
 *.dex
 *.class
 
+# .NET / Avalonia desktop app
+desktop-app/**/bin/
+desktop-app/**/obj/
+desktop-app/**/.vs/
+desktop-app/**/out/
+desktop-app/**/*.user
+*.nupkg
+
 # IDE
 .idea/
 *.iml

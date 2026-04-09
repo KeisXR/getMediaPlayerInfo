@@ -1,0 +1,177 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DesktopApp.ViewModels"
+             x:Class="DesktopApp.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="24" Spacing="16" MaxWidth="700">
+
+      <!-- ══ Connections ═══════════════════════════════════════════════ -->
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              CornerRadius="8" Padding="16">
+        <StackPanel Spacing="12">
+
+          <TextBlock Text="🔗  Connections"
+                     FontSize="16" FontWeight="Bold"
+                     Margin="0,0,0,4" />
+
+          <!-- Connection selector -->
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding Connections}"
+                      SelectedItem="{Binding SelectedConnection}"
+                      HorizontalAlignment="Stretch"
+                      Padding="8,6" />
+            <Button Grid.Column="1"
+                    Content="＋ Add"
+                    Command="{Binding AddConnectionCommand}"
+                    Margin="8,0,0,0" Padding="10,6" />
+            <Button Grid.Column="2"
+                    Content="🗑"
+                    Command="{Binding RemoveConnectionCommand}"
+                    Margin="4,0,0,0" Padding="10,6"
+                    ToolTip.Tip="Remove selected connection" />
+          </Grid>
+
+          <!-- Edit fields -->
+          <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto" >
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Name"
+                       VerticalAlignment="Center" Margin="0,0,8,8" />
+            <TextBox Grid.Row="0" Grid.Column="1"
+                     Text="{Binding EditName}"
+                     Margin="0,0,0,8" Padding="8,5" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Host"
+                       VerticalAlignment="Center" Margin="0,0,8,8" />
+            <TextBox Grid.Row="1" Grid.Column="1"
+                     Text="{Binding EditHost}"
+                     Margin="0,0,0,8" Padding="8,5" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Port"
+                       VerticalAlignment="Center" Margin="0,0,8,0" />
+            <NumericUpDown Grid.Row="2" Grid.Column="1"
+                           Value="{Binding EditPort}"
+                           Minimum="1" Maximum="65535"
+                           Increment="1"
+                           Padding="8,5" />
+          </Grid>
+
+          <Button Content="✔ Apply Connection"
+                  Command="{Binding ApplyConnectionCommand}"
+                  HorizontalAlignment="Left"
+                  Padding="12,6" />
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ Polling / Transport ═══════════════════════════════════════ -->
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              CornerRadius="8" Padding="16">
+        <StackPanel Spacing="10">
+
+          <TextBlock Text="📡  Transport"
+                     FontSize="16" FontWeight="Bold"
+                     Margin="0,0,0,4" />
+
+          <CheckBox Content="Use WebSocket (real-time updates)"
+                    IsChecked="{Binding UseWebSocket}" />
+
+          <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+            <TextBlock Grid.Column="0"
+                       Text="Polling interval (ms):"
+                       VerticalAlignment="Center"
+                       Margin="0,0,12,0" />
+            <NumericUpDown Grid.Column="1"
+                           Value="{Binding PollingIntervalMs}"
+                           Minimum="500" Maximum="60000"
+                           Increment="500"
+                           Padding="8,5"
+                           IsEnabled="{Binding !UseWebSocket}" />
+          </Grid>
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ Notifications ═════════════════════════════════════════════ -->
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              CornerRadius="8" Padding="16">
+        <StackPanel Spacing="10">
+
+          <TextBlock Text="🔔  Notifications"
+                     FontSize="16" FontWeight="Bold"
+                     Margin="0,0,0,4" />
+
+          <CheckBox Content="Show desktop notification on track change"
+                    IsChecked="{Binding NotificationsEnabled}" />
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ Appearance ════════════════════════════════════════════════ -->
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              CornerRadius="8" Padding="16">
+        <StackPanel Spacing="10">
+
+          <TextBlock Text="🎨  Appearance"
+                     FontSize="16" FontWeight="Bold"
+                     Margin="0,0,0,4" />
+
+          <Grid ColumnDefinitions="Auto,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="Theme:"
+                       VerticalAlignment="Center"
+                       Margin="0,0,12,0" />
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding ThemeOptions}"
+                      SelectedItem="{Binding SelectedTheme}"
+                      MinWidth="160"
+                      Padding="8,6" />
+          </Grid>
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ System ════════════════════════════════════════════════════ -->
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              CornerRadius="8" Padding="16">
+        <StackPanel Spacing="10">
+
+          <TextBlock Text="⚙  System"
+                     FontSize="16" FontWeight="Bold"
+                     Margin="0,0,0,4" />
+
+          <CheckBox Content="Minimize to system tray when window is closed"
+                    IsChecked="{Binding MinimizeToTray}" />
+
+          <CheckBox Content="Start minimized to tray"
+                    IsChecked="{Binding StartMinimized}" />
+
+          <CheckBox Content="Launch at system startup"
+                    IsChecked="{Binding RegisterStartup}" />
+
+          <CheckBox Content="Enable Discord Rich Presence (requires discord_presence.py)"
+                    IsChecked="{Binding DiscordPresenceEnabled}" />
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ Save ═══════════════════════════════════════════════════════ -->
+      <Grid ColumnDefinitions="Auto,*">
+        <Button Grid.Column="0"
+                Content="💾  Save Settings"
+                Command="{Binding SaveCommand}"
+                Padding="16,8"
+                FontSize="14"
+                FontWeight="Bold" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding SaveStatus}"
+                   Foreground="#22BB55"
+                   VerticalAlignment="Center"
+                   Margin="16,0,0,0"
+                   FontSize="13" />
+      </Grid>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

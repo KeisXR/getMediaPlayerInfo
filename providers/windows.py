@@ -202,8 +202,9 @@ class WindowsMediaProvider(MediaProvider):
             album = selected["album"]
             
             # Check if SMTC data is incomplete for known problematic apps
-            is_incomplete = not title and not artist and not album
-            needs_fallback = self._is_fallback_app(source_app) and is_incomplete
+            missing_primary_fields = not title and not artist
+            missing_all_fields = missing_primary_fields and not album
+            needs_fallback = self._is_fallback_app(source_app) and missing_primary_fields
             
             if needs_fallback:
                 # Try notification fallback for Amazon Music
@@ -212,7 +213,7 @@ class WindowsMediaProvider(MediaProvider):
                     return fallback_info
 
             # If we have absolutely no media fields, treat as no media.
-            if is_incomplete:
+            if missing_all_fields:
                 return None
 
             title = self._coalesce_title(title, artist, album, source_app)
